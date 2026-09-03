@@ -1,0 +1,816 @@
+---
+const tokyoParts = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).formatToParts(new Date());
+const datePart = (type: Intl.DateTimeFormatPartTypes) =>
+  tokyoParts.find((part) => part.type === type)?.value ?? '';
+const initialDate = `${datePart('year')}-${datePart('month')}-${datePart('day')}`;
+const initialDateLabel = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: 'Asia/Tokyo',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'short',
+}).format(new Date());
+const siteUrl = import.meta.env.PUBLIC_SITE_URL?.replace(/\/$/, '');
+const canonical = siteUrl
+  ? new URL(Astro.url.pathname, `${siteUrl}/`).toString()
+  : undefined;
+const adsenseClient = import.meta.env.PUBLIC_ADSENSE_CLIENT;
+const googleAnalyticsId = import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID?.trim();
+
+const areas = [
+  { id: 'tdl', label: '東京ディズニーランド', typeIndex: 0, typeValue: 4 },
+  { id: 'tds', label: '東京ディズニーシー', typeIndex: 1, typeValue: 5 },
+  { id: 'fantasy-springs', label: '東京ディズニーシー・ファンタジースプリングスホテル', typeIndex: 2, typeValue: 8 },
+  { id: 'disneyland-hotel', label: '東京ディズニーランドホテル', typeIndex: 3, typeValue: 3 },
+  { id: 'ambassador', label: 'ディズニーアンバサダーホテル', typeIndex: 4, typeValue: 1 },
+  { id: 'miracosta', label: '東京ディズニーシー・ホテルミラコスタ', typeIndex: 5, typeValue: 2 },
+  { id: 'toy-story', label: '東京ディズニーリゾート・トイ・ストーリーホテル', typeIndex: 6, typeValue: 7 },
+];
+
+const restaurants = [
+  { area: 'tdl', code: 'RESC0', name: 'イーストサイド･カフェ' },
+  { area: 'tdl', code: 'RCSC0', name: 'センターストリート ･ コーヒーハウス' },
+  { area: 'tdl', code: 'RJRH0', name: 'れすとらん北齋' },
+  { area: 'tdl', code: 'RCPR0', name: 'クリスタルパレス・レストラン' },
+  { area: 'tdl', code: 'RBBY0', name: 'ブルーバイユー・レストラン' },
+  { area: 'tds', code: 'RMGL0', name: 'マゼランズ' },
+  { area: 'tds', code: 'RRDC0', name: 'リストランテ・ディ・カナレット' },
+  { area: 'tds', code: 'RSSD0', name: 'Ｓ.Ｓ.コロンビア･ダイニングルーム' },
+  { area: 'tds', code: 'RTRL1', name: 'テディ・ルーズヴェルト・ラウンジ' },
+  { area: 'tds', code: 'RJRS0', name: 'レストラン櫻' },
+  { area: 'tds', code: 'RHZB1', name: 'ホライズンベイ・レストラン' },
+  { area: 'fantasy-springs', code: 'RFSR0', name: 'ファンタジースプリングス・レストラン' },
+  { area: 'disneyland-hotel', code: 'RSWG0', name: 'シャーウッドガーデン・レストラン' },
+  { area: 'disneyland-hotel', code: 'RCAN0', name: 'カンナ' },
+  { area: 'disneyland-hotel', code: 'RDML2', name: 'ドリーマーズ・ラウンジ（アフタヌーンティーセット限定）' },
+  { area: 'ambassador', code: 'RCHM0', name: 'シェフ・ミッキー' },
+  { area: 'ambassador', code: 'REPG0', name: 'エンパイア・グリル' },
+  { area: 'ambassador', code: 'RHPL3', name: 'ハイピリオン・ラウンジ（期間限定ケーキセット限定）' },
+  { area: 'ambassador', code: 'RHPL4', name: 'ハイピリオン・ラウンジ（プレミアムスウィーツセット限定）' },
+  { area: 'ambassador', code: 'RTIC2', name: 'チックタック・ダイナー（スペシャルブレッド限定）' },
+  { area: 'miracosta', code: 'ROCE0', name: 'オチェーアノ／ブッフェ' },
+  { area: 'miracosta', code: 'ROCE1', name: 'オチェーアノ／コース' },
+  { area: 'miracosta', code: 'RSRG0', name: 'シルクロードガーデン' },
+  { area: 'miracosta', code: 'RBVL0', name: 'ベッラヴィスタ・ラウンジ' },
+  { area: 'miracosta', code: 'RBVL1', name: 'ベッラヴィスタ・ラウンジ／後方席（窓側から3～4列目）' },
+  { area: 'toy-story', code: 'RLGC0', name: 'ロッツォ・ガーデンカフェ' },
+];
+
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content="東京ディズニーリゾートのレストラン検索ページへの直リンクを作成するツール" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <title>Restaurant Link | 予約リンク作成</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2280%22>✦</text></svg>" />
+    {
+      adsenseClient && (
+        <script
+          is:inline
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsenseClient)}`}
+          crossorigin="anonymous"
+        />
+      )
+    }
+    {
+      googleAnalyticsId && (
+        <>
+          <script
+            is:inline
+            async
+            src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAnalyticsId)}`}
+          />
+          <script is:inline define:vars={{ googleAnalyticsId }}>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            gtag('js', new Date());
+            gtag('config', googleAnalyticsId);
+          </script>
+        </>
+      )
+    }
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/">DISNEY RESORT Tools</a>
+        <span class="tool-name">Restaurant Link</span>
+      </div>
+    </header>
+
+    <main>
+      <form class="booking-card" id="booking-form">
+        <div class="card-heading">
+          <div>
+            <p class="step-label">DIRECT LINK BUILDER</p>
+            <h2>予約条件を入力</h2>
+          </div>
+          <div class="step-chip"><span>1</span> 条件入力</div>
+        </div>
+
+        <section class="form-section" aria-labelledby="schedule-title">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5 4h14a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+            </span>
+            <div><span>01</span><h3 id="schedule-title">来店日</h3></div>
+          </div>
+
+          <div class="schedule-grid">
+            <div class="field date-field">
+              <span>来店日</span>
+              <button class="input-shell date-picker-trigger" id="date-picker-trigger" type="button" aria-haspopup="dialog" aria-controls="date-picker-dialog">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5 4h14a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+                <span id="selected-date-label">{initialDateLabel}</span>
+                <svg class="date-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              <input id="use-date" type="hidden" name="useDate" value={initialDate} />
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="people-title">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>
+            </span>
+            <div><span>02</span><h3 id="people-title">人数</h3></div>
+          </div>
+
+          <div class="people-content">
+            <div class="people-grid">
+              <label class="field">
+                <span>大人（18才以上）</span>
+                <span class="select-shell">
+                  <select name="adultNum" aria-label="大人の人数">
+                    {Array.from({ length: 9 }, (_, i) => <option value={i} selected={i === 2}>{i}人</option>)}
+                  </select>
+                </span>
+              </label>
+              <label class="field">
+                <span>子ども</span>
+                <span class="select-shell">
+                  <select id="child-num" name="childNum" aria-label="子どもの人数">
+                    {Array.from({ length: 9 }, (_, i) => <option value={i}>{i}人</option>)}
+                  </select>
+                </span>
+              </label>
+              <div class="info-note">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+                <span>一度に予約できる人数は<br class="desktop-only" />合計8名までです</span>
+              </div>
+            </div>
+            <div class="child-age-fields" id="child-age-fields" hidden>
+              <div class="child-age-heading"><strong>子どもの年齢</strong><span>必須</span></div>
+              <p>ご利用日時点の年齢を選択してください。</p>
+              <div class="child-age-grid" id="child-age-grid"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="place-title">
+          <div class="section-heading">
+            <span class="section-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 10c0 6-9 12-9 12S3 16 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </span>
+            <div><span>03</span><h3 id="place-title">パークとレストラン</h3></div>
+          </div>
+
+          <div class="place-grid">
+            <fieldset class="field area-field">
+              <legend>パーク・ホテル</legend>
+              <div class="choice-cards">
+                {areas.map((area) => (
+                  <label>
+                    <input type="checkbox" name={`restaurantType[${area.typeIndex}]`} value={area.typeValue} data-area={area.id} />
+                    <span class="choice-card">
+                      <span class="checkmark"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" /></svg></span>
+                      <strong>{area.label}</strong>
+                    </span>
+                  </label>
+                ))}
+                <label>
+                  <input id="show-restaurant" type="checkbox" data-show-restaurant />
+                  <span class="choice-card">
+                    <span class="checkmark"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" /></svg></span>
+                    <strong>ショーレストラン</strong>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            <label class="field restaurant-field">
+              <span>レストラン名</span>
+              <span class="select-shell wide">
+                <select id="restaurant" name="restaurant">
+                  <option value="">すべてのレストラン</option>
+                  {restaurants.map((restaurant) => <option value={restaurant.code} data-area={restaurant.area}>{restaurant.name}</option>)}
+                </select>
+              </span>
+              <small>パーク・ホテルを選択すると候補を絞り込めます</small>
+            </label>
+          </div>
+        </section>
+
+        <details class="accessibility">
+          <summary>
+            <span class="summary-title">
+              <span class="section-icon small" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M8.5 8.5h5l2 4.5h3M10 9l-1 5h5.5M8.5 13.5a5 5 0 107 5M15 17l2 4"/></svg>
+              </span>
+              バリアフリー条件
+              <span class="optional">任意</span>
+            </span>
+            <svg class="chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+          </summary>
+          <div class="accessibility-content">
+            <label class="field"><span>車イスでのテーブル着席希望台数</span><span class="select-shell"><select name="wheelchairCount">{Array.from({ length: 9 }, (_, i) => <option value={i}>{i}台</option>)}</select></span></label>
+            <label class="field"><span>ストレッチャー利用台数</span><span class="select-shell"><select name="stretcherCount">{Array.from({ length: 9 }, (_, i) => <option value={i}>{i}台</option>)}</select></span></label>
+          </div>
+        </details>
+
+        <div class="action-area">
+          <div class="action-copy">
+            <span class="number">2</span>
+            <div><span class="step-label">READY TO GO</span><h3>予約リンクを作成</h3></div>
+          </div>
+          <button class="generate-button" type="submit">
+            リンクを作成する
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5" /></svg>
+          </button>
+        </div>
+
+        <p class="validation-message" id="validation-message" role="alert" hidden></p>
+
+        <div class="result-panel" id="result-panel" hidden aria-live="polite">
+          <div class="result-heading">
+            <div><span class="success-icon"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7" /></svg></span><strong>予約リンクを作成しました</strong></div>
+            <span class="status-dot">準備OK</span>
+          </div>
+          <div class="url-row">
+            <input id="generated-url" readonly aria-label="生成された予約リンク" />
+            <button type="button" class="copy-button" id="copy-button" aria-label="リンクをコピー">
+              <svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>
+              <span>コピー</span>
+            </button>
+          </div>
+          <a class="open-link" id="open-link" href="#" target="_blank" rel="noreferrer">
+            予約サイトを開く
+            <svg viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-9 9M19 13v6H5V5h6" /></svg>
+          </a>
+        </div>
+      </form>
+
+      <dialog class="date-picker-dialog" id="date-picker-dialog" aria-labelledby="date-picker-title">
+        <div class="date-picker-head">
+          <span>SELECT DATE</span>
+          <strong id="date-picker-title">日付を選択</strong>
+          <p id="date-picker-selection">{initialDateLabel}</p>
+        </div>
+        <div class="date-picker-body">
+          <div class="month-navigation">
+            <button type="button" id="previous-month" aria-label="前の月">
+              <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+            <strong id="calendar-month">2026年8月</strong>
+            <button type="button" id="next-month" aria-label="次の月">
+              <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          </div>
+          <div class="weekdays" aria-hidden="true">
+            <span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span>
+          </div>
+          <div class="calendar-grid" id="calendar-grid" role="grid" aria-label="日付"></div>
+          <div class="date-picker-actions">
+            <button type="button" id="date-picker-cancel">キャンセル</button>
+            <button type="button" id="date-picker-confirm">OK</button>
+          </div>
+        </div>
+      </dialog>
+
+      <p class="disclaimer">このツールは個人制作であり、東京ディズニーリゾート公式サービスではありません。予約可否や予約の確定は、リンク先の公式サイトでご確認ください。</p>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <p>© 2026 yuzumone</p>
+        <a href="/">yuzumone.net</a>
+      </div>
+    </footer>
+
+    <script>
+      const form = document.querySelector<HTMLFormElement>('#booking-form');
+      const panel = document.querySelector<HTMLElement>('#result-panel');
+      const output = document.querySelector<HTMLInputElement>('#generated-url');
+      const openLink = document.querySelector<HTMLAnchorElement>('#open-link');
+      const copyButton = document.querySelector<HTMLButtonElement>('#copy-button');
+      const dateInput = document.querySelector<HTMLInputElement>('#use-date');
+      const dateTrigger = document.querySelector<HTMLButtonElement>('#date-picker-trigger');
+      const dateDialog = document.querySelector<HTMLDialogElement>('#date-picker-dialog');
+      const dateLabel = document.querySelector<HTMLElement>('#selected-date-label');
+      const dateSelection = document.querySelector<HTMLElement>('#date-picker-selection');
+      const calendarMonth = document.querySelector<HTMLElement>('#calendar-month');
+      const calendarGrid = document.querySelector<HTMLElement>('#calendar-grid');
+      const previousMonth = document.querySelector<HTMLButtonElement>('#previous-month');
+      const nextMonth = document.querySelector<HTMLButtonElement>('#next-month');
+      const dateCancel = document.querySelector<HTMLButtonElement>('#date-picker-cancel');
+      const dateConfirm = document.querySelector<HTMLButtonElement>('#date-picker-confirm');
+      const validationMessage = document.querySelector<HTMLElement>('#validation-message');
+      const areaInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[data-area]'));
+      const showRestaurantInput = document.querySelector<HTMLInputElement>('#show-restaurant');
+      const restaurantSelect = document.querySelector<HTMLSelectElement>('#restaurant');
+      const childNumSelect = document.querySelector<HTMLSelectElement>('#child-num');
+      const childAgeFields = document.querySelector<HTMLElement>('#child-age-fields');
+      const childAgeGrid = document.querySelector<HTMLElement>('#child-age-grid');
+      const childAgeOptions = [
+        { value: '00', label: '0才' }, { value: '01', label: '1才' }, { value: '02', label: '2才' },
+        { value: '03', label: '3才' }, { value: '04', label: '4才' }, { value: '05', label: '5才' },
+        { value: '06D', label: '6才（未就学）' }, { value: '06U', label: '6才（小学生）' },
+        { value: '07', label: '7才' }, { value: '08', label: '8才' }, { value: '09', label: '9才' },
+        { value: '10', label: '10才' }, { value: '11', label: '11才' },
+        { value: '12D', label: '12才（小学生）' }, { value: '12U', label: '12才（中学生）' },
+        { value: '13', label: '13才〜18才（高校生）' },
+      ];
+      const childAgeValues: string[] = [];
+
+      const parseDate = (value: string) => {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      };
+      const toDateValue = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const formatDate = (date: Date) => new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'short',
+      }).format(date);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      let selectedDate = parseDate(dateInput?.value ?? toDateValue(today));
+      let draftDate = new Date(selectedDate);
+      let visibleMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+
+      const renderCalendar = () => {
+        if (!calendarGrid || !calendarMonth || !dateSelection) return;
+        const year = visibleMonth.getFullYear();
+        const month = visibleMonth.getMonth();
+        const firstWeekday = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        calendarMonth.textContent = `${year}年${month + 1}月`;
+        dateSelection.textContent = formatDate(draftDate);
+        if (previousMonth) {
+          previousMonth.disabled = visibleMonth <= new Date(today.getFullYear(), today.getMonth(), 1);
+        }
+        calendarGrid.replaceChildren();
+
+        for (let i = 0; i < firstWeekday; i += 1) {
+          const spacer = document.createElement('span');
+          spacer.className = 'calendar-spacer';
+          calendarGrid.append(spacer);
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          const date = new Date(year, month, day);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = String(day);
+          button.setAttribute('role', 'gridcell');
+          button.setAttribute('aria-label', formatDate(date));
+          if (date < today) {
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
+          }
+          if (toDateValue(date) === toDateValue(draftDate)) {
+            button.classList.add('selected');
+            button.setAttribute('aria-selected', 'true');
+          }
+          if (toDateValue(date) === toDateValue(new Date())) button.classList.add('today');
+          button.addEventListener('click', () => {
+            draftDate = date;
+            renderCalendar();
+          });
+          calendarGrid.append(button);
+        }
+      };
+
+      dateTrigger?.addEventListener('click', () => {
+        draftDate = new Date(selectedDate);
+        visibleMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        renderCalendar();
+        dateDialog?.showModal();
+      });
+      previousMonth?.addEventListener('click', () => {
+        const previous = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1);
+        if (previous >= new Date(today.getFullYear(), today.getMonth(), 1)) visibleMonth = previous;
+        renderCalendar();
+      });
+      nextMonth?.addEventListener('click', () => {
+        visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1);
+        renderCalendar();
+      });
+      dateCancel?.addEventListener('click', () => dateDialog?.close());
+      dateConfirm?.addEventListener('click', () => {
+        selectedDate = new Date(draftDate);
+        if (dateInput) dateInput.value = toDateValue(selectedDate);
+        if (dateLabel) dateLabel.textContent = formatDate(selectedDate);
+        dateDialog?.close();
+      });
+      dateDialog?.addEventListener('click', (event) => {
+        if (event.target === dateDialog) dateDialog.close();
+      });
+
+      const filterRestaurantOptions = () => {
+        if (!restaurantSelect) return;
+        const selectedAreas = new Set(areaInputs.filter((input) => input.checked).map((input) => input.dataset.area));
+        Array.from(restaurantSelect.options).forEach((option) => {
+          if (!option.value) return;
+          const available = selectedAreas.has(option.dataset.area);
+          option.hidden = !available;
+          option.disabled = !available;
+        });
+        if (restaurantSelect.selectedOptions[0]?.disabled) restaurantSelect.value = '';
+      };
+      const updateRestaurantMode = () => {
+        const isShowRestaurant = showRestaurantInput?.checked ?? false;
+        if (restaurantSelect) {
+          restaurantSelect.disabled = isShowRestaurant;
+          if (isShowRestaurant) restaurantSelect.value = '';
+        }
+        if (isShowRestaurant) areaInputs.forEach((input) => { input.checked = false; });
+        filterRestaurantOptions();
+      };
+      areaInputs.forEach((input) => input.addEventListener('change', () => {
+        if (input.checked && showRestaurantInput) showRestaurantInput.checked = false;
+        updateRestaurantMode();
+      }));
+      showRestaurantInput?.addEventListener('change', updateRestaurantMode);
+      filterRestaurantOptions();
+
+      const renderChildAgeFields = () => {
+        if (!childNumSelect || !childAgeFields || !childAgeGrid) return;
+        const count = Number(childNumSelect.value);
+        childAgeFields.hidden = count === 0;
+        childAgeValues.length = count;
+        childAgeGrid.replaceChildren();
+
+        for (let index = 0; index < count; index += 1) {
+          const field = document.createElement('label');
+          field.className = 'child-age-field';
+          const fieldLabel = document.createElement('span');
+          fieldLabel.textContent = `${index + 1}人目`;
+          const shell = document.createElement('span');
+          shell.className = 'select-shell';
+          const select = document.createElement('select');
+          select.className = 'child-age-select';
+          select.name = `childAge${index + 1}`;
+          select.setAttribute('aria-label', `${index + 1}人目の年齢`);
+          const placeholder = document.createElement('option');
+          placeholder.value = '';
+          placeholder.textContent = '年齢を選択';
+          placeholder.disabled = true;
+          select.append(placeholder);
+          childAgeOptions.forEach((age) => {
+            const option = document.createElement('option');
+            option.value = age.value;
+            option.textContent = age.label;
+            select.append(option);
+          });
+          select.value = childAgeValues[index] ?? '';
+          select.addEventListener('change', () => { childAgeValues[index] = select.value; });
+          shell.append(select);
+          field.append(fieldLabel, shell);
+          childAgeGrid.append(field);
+        }
+      };
+      childNumSelect?.addEventListener('change', renderChildAgeFields);
+      renderChildAgeFields();
+
+      form?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const adults = Number(data.get('adultNum') ?? 0);
+        const children = Number(data.get('childNum') ?? 0);
+        const total = adults + children;
+        if (total < 1 || total > 8) {
+          if (validationMessage) {
+            validationMessage.textContent = '予約人数は1〜8名で指定してください。';
+            validationMessage.hidden = false;
+            validationMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          return;
+        }
+        const selectedChildAges = Array.from(document.querySelectorAll<HTMLSelectElement>('.child-age-select')).map((select) => select.value);
+        if (children > 0 && selectedChildAges.some((age) => !age)) {
+          if (validationMessage) {
+            validationMessage.textContent = '子どもの年齢をすべて選択してください。';
+            validationMessage.hidden = false;
+            validationMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          return;
+        }
+        const onlyChildrenThreeOrYounger = adults === 0 && selectedChildAges.length > 0 && selectedChildAges.every((age) => Number.parseInt(age, 10) <= 3);
+        if (onlyChildrenThreeOrYounger) {
+          if (validationMessage) {
+            validationMessage.textContent = '3才以下のお子さまのみでは検索できません。大人または4才以上の方を含めてください。';
+            validationMessage.hidden = false;
+            validationMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+          return;
+        }
+        if (validationMessage) validationMessage.hidden = true;
+        const date = String(data.get('useDate') ?? '').replaceAll('-', '');
+        const childAgeInform = selectedChildAges.map((age) => `${age}|`).join('');
+        const isShowRestaurant = showRestaurantInput?.checked ?? false;
+        const params = isShowRestaurant
+          ? new URLSearchParams({
+              useDate: date,
+              adultNum: String(adults),
+              childNum: String(children),
+              wheelchairCount: String(data.get('wheelchairCount') ?? '0'),
+              stretcherCount: String(data.get('stretcherCount') ?? '0'),
+              freeword: '',
+              childAgeInform,
+              reservationStatus: '1',
+            })
+          : new URLSearchParams({
+              useDate: date,
+              adultNum: String(adults),
+              childNum: String(children),
+              childAgeInform,
+            });
+        if (!isShowRestaurant) {
+          areaInputs.filter((input) => input.checked).forEach((input) => params.append(input.name, input.value));
+          params.set('nameCd', String(data.get('restaurant') ?? ''));
+          params.set('wheelchairCount', String(data.get('wheelchairCount') ?? '0'));
+          params.set('stretcherCount', String(data.get('stretcherCount') ?? '0'));
+          params.set('keyword', '');
+          params.set('reservationStatus', '1');
+        }
+        const endpoint = isShowRestaurant
+          ? 'https://reserve.tokyodisneyresort.jp/showrestaurant/search/list?'
+          : 'https://reserve.tokyodisneyresort.jp/restaurant/search/?';
+        const url = `${endpoint}${params.toString()}`;
+        if (output) output.value = url;
+        if (openLink) openLink.href = url;
+        if (panel) {
+          panel.hidden = false;
+          panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
+
+      copyButton?.addEventListener('click', async () => {
+        if (!output?.value) return;
+        await navigator.clipboard.writeText(output.value);
+        const label = copyButton.querySelector('span');
+        if (label) label.textContent = 'コピー済み';
+        copyButton.classList.add('copied');
+        window.setTimeout(() => {
+          if (label) label.textContent = 'コピー';
+          copyButton.classList.remove('copied');
+        }, 1800);
+      });
+    </script>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light;
+    --primary: #2196f3;
+    --primary-dark: #1976d2;
+    --primary-container: #d9ecff;
+    --on-primary-container: #0b416a;
+    --secondary: #526677;
+    --surface: #ffffff;
+    --surface-low: #f7faf8;
+    --surface-high: #edf2ef;
+    --outline: #777d79;
+    --outline-variant: #d4d9d6;
+    --ink: #252525;
+    --muted: #696969;
+    --success: #386a4b;
+    --success-container: #baf2c8;
+    --line: #e5e5e5;
+    --max-width: 760px;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; color: var(--ink); background: var(--surface); min-width: 320px; }
+  button, input, select { font: inherit; }
+  button, select, input[type="checkbox"], input[type="radio"], summary { cursor: pointer; }
+  svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .topbar {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .topbar-inner, .footer-inner { width: min(calc(100% - 2.5rem), var(--max-width)); margin-inline: auto; }
+  .topbar-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .brand { color: var(--ink); text-decoration: none; font-size: 1rem; font-weight: 700; }
+  .tool-name { color: var(--muted); font-size: .75rem; }
+
+  main { width: min(calc(100% - 2.5rem), var(--max-width)); margin: 0 auto; }
+  .booking-card { margin-top: clamp(3rem, 8vw, 5rem); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: 0 8px 28px rgba(37,37,37,.06); overflow: hidden; }
+  .card-heading { display: flex; justify-content: space-between; align-items: flex-end; padding: 27px 30px 24px; background: var(--surface-low); }
+  .step-label { color: var(--primary); font-size: 9px; font-weight: 800; letter-spacing: .17em; }
+  .card-heading p, .action-copy p { margin: 0 0 7px; }
+  .card-heading h2 { margin: 0; font-size: 26px; letter-spacing: -.03em; }
+  .step-chip { color: var(--muted); display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; }
+  .step-chip span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; color: white; background: var(--primary); font-size: 11px; }
+
+  .form-section { display: grid; grid-template-columns: 170px 1fr; gap: 26px; padding: 30px; border-top: 1px solid var(--line); }
+  .section-heading { display: flex; align-items: flex-start; gap: 14px; }
+  .section-icon { flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; color: var(--primary); background: var(--primary-container); }
+  .section-icon svg { width: 21px; height: 21px; }
+  .section-heading div > span { color: var(--primary); font-size: 9px; font-weight: 800; letter-spacing: .15em; }
+  .section-heading h3 { margin: 4px 0 0; font-size: 17px; }
+  .schedule-grid { max-width: 300px; }
+  .field { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .field > span, .field legend { color: var(--muted); font-size: 12px; font-weight: 700; }
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .input-shell, .select-shell { height: 50px; border-radius: 13px; border: 1px solid var(--outline-variant); background: white; display: flex; align-items: center; transition: border-color .2s, box-shadow .2s; }
+  .input-shell:focus-within, .select-shell:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(33,150,243,.13); }
+  .input-shell svg { margin-left: 15px; width: 19px; color: var(--primary); }
+  .input-shell input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 14px 0 10px; color: var(--ink); font-weight: 650; }
+  .date-picker-trigger { width: 100%; padding: 0; color: var(--ink); text-align: left; }
+  .date-picker-trigger > span { flex: 1; padding-left: 10px; font-size: 13px; font-weight: 700; }
+  .date-picker-trigger .date-chevron { width: 17px; margin: 0 15px 0 8px; color: var(--muted); }
+  .select-shell { position: relative; }
+  .select-shell::after { content: ""; position: absolute; right: 16px; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translateY(-3px); pointer-events: none; }
+  .select-shell select { width: 100%; height: 100%; padding: 0 42px 0 15px; appearance: none; border: 0; outline: 0; color: var(--ink); background: transparent; font-weight: 650; }
+
+  .segmented { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--outline-variant); border-radius: 13px; overflow: hidden; height: 50px; background: white; }
+  .segmented label { display: contents; }
+  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+  .segmented span { display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); border-left: 1px solid var(--outline-variant); transition: .18s ease; }
+  .segmented label:first-child span { border-left: 0; border-radius: 12px 0 0 12px; }
+  .segmented label:last-child span { border-radius: 0 12px 12px 0; }
+  .segmented input:checked + span { background: var(--primary-container); color: var(--on-primary-container); box-shadow: inset 0 0 0 1px var(--primary); }
+  .segmented input:focus-visible + span { outline: 3px solid rgba(33,150,243,.22); outline-offset: -3px; }
+
+  .date-picker-dialog {
+    width: min(360px, calc(100% - 32px));
+    max-width: none;
+    padding: 0;
+    border: 0;
+    border-radius: 28px;
+    color: var(--ink);
+    background: var(--surface);
+    box-shadow: 0 24px 70px rgba(21, 35, 56, .28);
+    overflow: hidden;
+  }
+  .date-picker-dialog::backdrop { background: rgba(20, 27, 39, .42); backdrop-filter: blur(3px); }
+  .date-picker-head { padding: 22px 24px 20px; color: var(--on-primary-container); background: var(--primary-container); }
+  .date-picker-head > span { display: block; margin-bottom: 8px; font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+  .date-picker-head strong { display: block; font-size: 14px; }
+  .date-picker-head p { margin: 12px 0 0; font-size: 26px; font-weight: 750; letter-spacing: -.04em; }
+  .date-picker-body { padding: 12px 18px 10px; }
+  .month-navigation { height: 48px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; text-align: center; }
+  .month-navigation button { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; color: var(--muted); background: transparent; }
+  .month-navigation button:hover { background: var(--surface-high); }
+  .month-navigation button:focus-visible, .calendar-grid button:focus-visible, .date-picker-actions button:focus-visible { outline: 3px solid rgba(33,150,243,.22); }
+  .month-navigation svg { width: 20px; }
+  .month-navigation strong { font-size: 14px; }
+  .weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+  .weekdays { margin-top: 2px; color: var(--muted); text-align: center; font-size: 10px; font-weight: 700; }
+  .weekdays span { height: 34px; display: grid; place-items: center; }
+  .calendar-grid { row-gap: 2px; }
+  .calendar-grid button { width: 38px; height: 38px; place-self: center; display: grid; place-items: center; border: 0; border-radius: 50%; color: var(--ink); background: transparent; font-size: 12px; font-weight: 650; }
+  .calendar-grid button:hover { background: var(--surface-high); }
+  .calendar-grid button:disabled { cursor: not-allowed; color: var(--outline-variant); }
+  .calendar-grid button:disabled:hover { background: transparent; }
+  .calendar-grid button.today { box-shadow: inset 0 0 0 1px var(--primary); color: var(--primary); }
+  .calendar-grid button.selected { color: white; background: var(--primary); box-shadow: none; }
+  .calendar-spacer { width: 38px; height: 38px; }
+  .date-picker-actions { display: flex; justify-content: flex-end; gap: 4px; padding-top: 12px; }
+  .date-picker-actions button { min-width: 64px; height: 40px; padding: 0 14px; border: 0; border-radius: 20px; color: var(--primary); background: transparent; font-size: 12px; font-weight: 800; }
+  .date-picker-actions button:hover { background: var(--primary-container); }
+
+  .people-content { display: grid; gap: 20px; }
+  .people-grid { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 18px; align-items: end; }
+  .info-note { min-height: 50px; display: flex; align-items: center; gap: 10px; padding: 9px 13px; border-radius: 13px; color: var(--muted); background: var(--surface-low); font-size: 11px; line-height: 1.5; }
+  .info-note svg { flex: none; width: 18px; }
+  .child-age-fields { padding: 17px; border: 1px solid var(--outline-variant); border-radius: 16px; background: var(--surface-low); }
+  .child-age-heading { display: flex; align-items: center; gap: 8px; }
+  .child-age-heading strong { font-size: 13px; }
+  .child-age-heading span { padding: 3px 7px; border-radius: 99px; color: var(--primary-dark); background: var(--primary-container); font-size: 9px; font-weight: 800; }
+  .child-age-fields p { margin: 7px 0 14px; color: var(--muted); font-size: 11px; }
+  .child-age-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .child-age-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .child-age-field > span:first-child { color: var(--muted); font-size: 10px; font-weight: 700; }
+  .child-age-field .select-shell { height: 46px; background: var(--surface); }
+  .child-age-field .select-shell select { padding-left: 12px; font-size: 12px; }
+
+  .place-grid { display: grid; gap: 24px; }
+  .choice-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .choice-cards label { min-width: 0; }
+  .choice-cards input { position: absolute; opacity: 0; }
+  .choice-card { position: relative; min-height: 86px; padding: 14px 10px; display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 7px; text-align: center; border: 1px solid var(--outline-variant); border-radius: 16px; background: white; transition: .18s ease; }
+  .choice-card strong { font-size: 11px; line-height: 1.4; }
+  .area-mark { color: var(--primary); font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+  .checkmark { position: absolute; top: 8px; right: 8px; width: 18px; height: 18px; border: 1.5px solid var(--outline-variant); border-radius: 5px; color: transparent; display: grid; place-items: center; }
+  .checkmark svg { width: 13px; stroke-width: 2.7; }
+  .choice-cards input:checked + .choice-card { border-color: var(--primary); background: var(--surface-low); box-shadow: inset 0 0 0 1px var(--primary); }
+  .choice-cards input:checked + .choice-card .checkmark { background: var(--primary); border-color: var(--primary); color: white; }
+  .choice-cards input:focus-visible + .choice-card { outline: 3px solid rgba(33,150,243,.2); }
+  .restaurant-field small { color: var(--muted); font-size: 10px; }
+
+  .accessibility { border-top: 1px solid var(--line); }
+  .accessibility summary { list-style: none; min-height: 74px; display: flex; justify-content: space-between; align-items: center; padding: 16px 40px; }
+  .accessibility summary::-webkit-details-marker { display: none; }
+  .summary-title { display: flex; align-items: center; gap: 13px; font-weight: 750; font-size: 14px; }
+  .section-icon.small { width: 36px; height: 36px; border-radius: 11px; background: var(--surface-high); color: var(--secondary); }
+  .section-icon.small svg { width: 20px; }
+  .optional { color: var(--muted); padding: 4px 8px; border-radius: 99px; background: var(--surface-high); font-size: 9px; font-weight: 700; }
+  .chevron { width: 20px; color: var(--muted); transition: transform .2s; }
+  details[open] .chevron { transform: rotate(180deg); }
+  .accessibility-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 40px 26px 89px; }
+
+  .action-area { padding: 27px 40px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: var(--primary-dark); color: white; }
+  .action-copy { display: flex; align-items: center; gap: 15px; }
+  .action-copy .number { width: 37px; height: 37px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(255,255,255,.55); font-size: 13px; font-weight: 800; }
+  .action-copy .step-label { color: #d5eaff; }
+  .action-copy h3 { margin: 4px 0 0; font-size: 18px; }
+  .generate-button { min-width: 225px; height: 52px; padding: 0 22px; display: flex; align-items: center; justify-content: center; gap: 18px; border: 0; border-radius: 16px; background: white; color: var(--primary-dark); box-shadow: 0 5px 16px rgba(0,0,0,.15); font-weight: 800; transition: transform .18s, box-shadow .18s; }
+  .generate-button svg { width: 19px; }
+  .generate-button:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(0,0,0,.22); }
+  .generate-button:active { transform: translateY(0); }
+
+  .result-panel { padding: 28px 40px 32px; background: #f2fbf4; border-top: 1px solid #c9e7d1; }
+  .result-panel[hidden] { display: none; }
+  .result-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 17px; }
+  .result-heading > div { display: flex; align-items: center; gap: 10px; }
+  .success-icon { width: 26px; height: 26px; display: grid; place-items: center; color: white; background: var(--success); border-radius: 50%; }
+  .success-icon svg { width: 16px; stroke-width: 2.5; }
+  .status-dot { padding: 5px 9px; color: var(--success); background: var(--success-container); border-radius: 99px; font-size: 9px; font-weight: 800; letter-spacing: .05em; }
+  .url-row { display: flex; border: 1px solid #adcfb7; border-radius: 13px; background: white; overflow: hidden; }
+  .url-row input { min-width: 0; flex: 1; height: 48px; border: 0; outline: 0; padding: 0 14px; color: var(--muted); background: transparent; font-size: 11px; }
+  .copy-button { width: 104px; border: 0; border-left: 1px solid #d4e6d9; display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--success); background: #f8fff9; font-size: 11px; font-weight: 800; }
+  .copy-button svg { width: 16px; }
+  .copy-button.copied { background: var(--success-container); }
+  .open-link { margin-top: 14px; display: inline-flex; align-items: center; gap: 7px; color: var(--success); font-size: 12px; font-weight: 800; text-decoration: none; }
+  .open-link svg { width: 16px; }
+  .validation-message { margin: 0; padding: 13px 40px; color: #a52a2a; background: #fff3f2; border-top: 1px solid #ffd9d5; font-size: 12px; font-weight: 700; }
+  .disclaimer { text-align: left; margin: 22px 0 60px; color: var(--muted); font-size: 10px; }
+  .site-footer { padding-block: 1.5rem; border-top: 1px solid var(--line); }
+  .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; }
+  .footer-inner p { margin: 0; color: var(--muted); font-size: .78rem; }
+  .footer-inner a { color: var(--muted); font-size: .8rem; text-decoration: none; }
+  .footer-inner a:hover { color: var(--ink); text-decoration: underline; }
+
+  @media (max-width: 800px) {
+    .form-section { grid-template-columns: 1fr; gap: 22px; padding: 28px 24px; }
+    .people-grid { grid-template-columns: 1fr 1fr; }
+    .info-note { grid-column: 1 / -1; }
+    .info-note { min-height: auto; }
+    .child-age-grid { grid-template-columns: repeat(3, 1fr); }
+    .place-grid { gap: 20px; }
+    .card-heading, .accessibility summary, .action-area, .result-panel { padding-left: 24px; padding-right: 24px; }
+    .accessibility-content { padding: 0 24px 26px; }
+  }
+
+  @media (max-width: 560px) {
+    .topbar-inner { min-height: 58px; }
+    .brand { font-size: 14px; }
+    .booking-card { border-radius: 18px; }
+    .card-heading { padding: 24px 20px 21px; }
+    .card-heading h2 { font-size: 22px; }
+    .step-chip { display: none; }
+    .form-section { padding: 26px 20px; }
+    .people-grid, .accessibility-content { grid-template-columns: 1fr; }
+    .child-age-grid { grid-template-columns: repeat(2, 1fr); }
+    .info-note { grid-column: auto; }
+    .accessibility summary { padding: 15px 20px; }
+    .accessibility-content { padding: 0 20px 24px; }
+    .action-area { padding: 24px 20px; flex-direction: column; align-items: stretch; }
+    .generate-button { min-width: 0; width: 100%; }
+    .result-panel { padding: 24px 20px 28px; }
+    .validation-message { padding-left: 20px; padding-right: 20px; }
+    .result-heading { align-items: flex-start; gap: 12px; }
+    .url-row { flex-direction: column; }
+    .copy-button { width: 100%; height: 42px; border-left: 0; border-top: 1px solid #d4e6d9; }
+    .desktop-only { display: none; }
+    .footer-inner { align-items: flex-start; flex-direction: column; gap: .75rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; }
+  }
+</style>
