@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tdr",
+  "compatibility_date": "2026-09-05",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "tdr.yuzumone.net",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./dist"
+  }
+}
