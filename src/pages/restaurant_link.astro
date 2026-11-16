@@ -1,20 +1,4 @@
 ---
-const tokyoParts = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'Asia/Tokyo',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-}).formatToParts(new Date());
-const datePart = (type: Intl.DateTimeFormatPartTypes) =>
-  tokyoParts.find((part) => part.type === type)?.value ?? '';
-const initialDate = `${datePart('year')}-${datePart('month')}-${datePart('day')}`;
-const initialDateLabel = new Intl.DateTimeFormat('ja-JP', {
-  timeZone: 'Asia/Tokyo',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-  weekday: 'short',
-}).format(new Date());
 const siteUrl = import.meta.env.PUBLIC_SITE_URL?.replace(/\/$/, '');
 const canonical = siteUrl
   ? new URL(Astro.url.pathname, `${siteUrl}/`).toString()
@@ -131,10 +115,10 @@ const restaurants = [
               <span>来店日</span>
               <button class="input-shell date-picker-trigger" id="date-picker-trigger" type="button" aria-haspopup="dialog" aria-controls="date-picker-dialog">
                 <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 2v3M17 2v3M3.5 9h17M5 4h14a2 2 0 012 2v13a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
-                <span id="selected-date-label">{initialDateLabel}</span>
+                <span id="selected-date-label">日付を選択</span>
                 <svg class="date-chevron" aria-hidden="true" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
               </button>
-              <input id="use-date" type="hidden" name="useDate" value={initialDate} />
+              <input id="use-date" type="hidden" name="useDate" />
             </div>
           </div>
         </section>
@@ -275,7 +259,7 @@ const restaurants = [
         <div class="date-picker-head">
           <span>SELECT DATE</span>
           <strong id="date-picker-title">日付を選択</strong>
-          <p id="date-picker-selection">{initialDateLabel}</p>
+          <p id="date-picker-selection"></p>
         </div>
         <div class="date-picker-body">
           <div class="month-navigation">
@@ -343,10 +327,6 @@ const restaurants = [
       ];
       const childAgeValues: string[] = [];
 
-      const parseDate = (value: string) => {
-        const [year, month, day] = value.split('-').map(Number);
-        return new Date(year, month - 1, day);
-      };
       const toDateValue = (date: Date) => {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -359,7 +339,9 @@ const restaurants = [
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      let selectedDate = parseDate(dateInput?.value ?? toDateValue(today));
+      let selectedDate = new Date(today);
+      if (dateInput) dateInput.value = toDateValue(selectedDate);
+      if (dateLabel) dateLabel.textContent = formatDate(selectedDate);
       let draftDate = new Date(selectedDate);
       let visibleMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
 
